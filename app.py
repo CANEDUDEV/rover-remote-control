@@ -6,6 +6,7 @@ from aiohttp import web
 import json
 
 logger = logging.getLogger("pc")
+logging.basicConfig(level=logging.INFO)
 
 pcs = set()
 
