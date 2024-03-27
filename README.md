@@ -1,10 +1,9 @@
 # rover-remote-control
 
 Requirements for this project:
- - Raspberry pi 4 4gb
+ - Raspberry pi 4 4gb with docker installed
  - Tailscale on PC and rpi
 
 1. Run `tailscale ip` on rpi, copy IPv4
-2. Run `python app.y` on the rpi
-3. Connect to the copied IP on port 8080 using a web browser. Don't use the
-   tailscale hostname as this will not work.
+2. Run `docker compose up -d` on the rpi
+3. Paste the IP from step 1 into a web browser.

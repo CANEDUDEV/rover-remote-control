@@ -1,0 +1,9 @@
+services:
+  stun-server:
+    image: coturn/coturn:4.6
+    network_mode: host
+
+  app:
+    build: .
+    image: rover-remote-control
+    network_mode: host
