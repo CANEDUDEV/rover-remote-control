@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Context xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Profiles>
+    <Profile Title="SuperDrive SV450" Guid="d1478d6a-3731-4ec1-99ac-ed66e6604e7a">
+      <ChildProfiles />
+      <Mappings>
+        <Mapping Title="Steering wheel to X">
+          <DeviceBindings>
+            <DeviceBinding IsBound="true" DeviceConfigurationGuid="bb1fd5ec-83ad-460c-abb5-45a9894e0879" KeyType="0" KeyValue="0" KeySubValue="0" />
+            <DeviceBinding IsBound="false" DeviceConfigurationGuid="00000000-0000-0000-0000-000000000000" KeyType="0" KeyValue="0" KeySubValue="0" />
+          </DeviceBindings>
+          <Plugins>
+            <Plugin xsi:type="AxesToAxes">
+              <Outputs>
+                <DeviceBinding IsBound="true" DeviceConfigurationGuid="051f50b1-5433-4907-84a0-8707112300a0" KeyType="0" KeyValue="0" KeySubValue="0" />
+                <DeviceBinding IsBound="false" DeviceConfigurationGuid="00000000-0000-0000-0000-000000000000" KeyType="0" KeyValue="0" KeySubValue="0" />
+              </Outputs>
+              <Filters />
+              <InvertX>false</InvertX>
+              <InvertY>false</InvertY>
+              <Sensitivity>100</Sensitivity>
+              <Linear>false</Linear>
+              <DeadZone>0</DeadZone>
+              <CircularDz>false</CircularDz>
+            </Plugin>
+          </Plugins>
+        </Mapping>
+        <Mapping Title="Pedals to Y">
+          <DeviceBindings>
+            <DeviceBinding IsBound="true" DeviceConfigurationGuid="bb1fd5ec-83ad-460c-abb5-45a9894e0879" KeyType="0" KeyValue="5" KeySubValue="0" />
+            <DeviceBinding IsBound="true" DeviceConfigurationGuid="bb1fd5ec-83ad-460c-abb5-45a9894e0879" KeyType="0" KeyValue="4" KeySubValue="0" />
+          </DeviceBindings>
+          <Plugins>
+            <Plugin xsi:type="AxisMerger">
+              <Outputs>
+                <DeviceBinding IsBound="true" DeviceConfigurationGuid="051f50b1-5433-4907-84a0-8707112300a0" KeyType="0" KeyValue="1" KeySubValue="0" />
+              </Outputs>
+              <Filters />
+              <DeadZone>0</DeadZone>
+              <Mode>Average</Mode>
+              <InvertHigh>false</InvertHigh>
+              <InvertLow>true</InvertLow>
+              <Linear>false</Linear>
+              <Sensitivity>100</Sensitivity>
+            </Plugin>
+          </Plugins>
+        </Mapping>
+      </Mappings>
+      <InputDeviceConfigurations>
+        <DeviceConfiguration Guid="bb1fd5ec-83ad-460c-abb5-45a9894e0879">
+          <Device Title="Xbox Controller 1" ProviderName="SharpDX_XInput" DeviceHandle="xb360" DeviceNumber="0" />
+          <ShadowDevices />
+        </DeviceConfiguration>
+      </InputDeviceConfigurations>
+      <OutputDeviceConfigurations>
+        <DeviceConfiguration Guid="051f50b1-5433-4907-84a0-8707112300a0">
+          <Device Title="vJoy Stick 1" ProviderName="Core_vJoyInterfaceWrap" DeviceHandle="0" DeviceNumber="0" />
+          <ShadowDevices />
+        </DeviceConfiguration>
+      </OutputDeviceConfigurations>
+    </Profile>
+  </Profiles>
+</Context>
