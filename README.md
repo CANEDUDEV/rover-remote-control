@@ -15,7 +15,11 @@ You need a HTTPS connection for the gamepad to work when using Firefox. Run
 `tailscale cert` to generate a certificate. See this link for prerequisites:
 https://tailscale.com/kb/1153/enabling-https
 
+Put the certs in a folder names `certs` and name them `cert.crt` and `key.key`.
+
 1. Set the rpi's hostname to `rover`. Register it in tailscale so it is
-   accessible using `ping rover`.
+   accessible using `ping rover`. This is required for the STUN server to work.
 2. Run `docker compose up -d` on the rpi
-3. Access the rover's hostname at port 8080 in the browser.
+3. Access the rover's hostname in the browser.
+4. Press start. This will try to establish a P2P connection. Sometimes it
+   fails, and you need to stop then start again to retry.
