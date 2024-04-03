@@ -5,5 +5,7 @@ services:
 
   app:
     build: .
+    devices:
+      - /dev/video0
     image: rover-remote-control
     network_mode: host
