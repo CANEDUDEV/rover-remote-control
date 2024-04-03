@@ -9,11 +9,16 @@
 
 <body>
 
-  <h1> Gamepad input test </h1>
-  <div id="gamepad-info"></div>
-
   <button id="start" onclick="start()">Start</button>
   <button id="stop" style="display: none" onclick="stop()">Stop</button>
+
+  <div id="media">
+    <h2>Media</h2>
+    <video id="video" autoplay="true" playsinline="true"></video>
+  </div>
+
+  <h1> Gamepad input test </h1>
+  <div id="gamepad-info"></div>
 
   <h2>State</h2>
   <p>
@@ -39,7 +44,6 @@
   <pre id="answer-sdp"></pre>
 
   <script src="/static/client.js"></script>
-
 
 </body>
 

@@ -1,14 +1,48 @@
 import logging
+import uuid
+import json
+import platform
+import asyncio
 
 from aiortc import RTCPeerConnection, RTCSessionDescription
-import uuid
+from aiortc.contrib.media import MediaPlayer, MediaRelay
+from aiortc.rtcrtpsender import RTCRtpSender
 from aiohttp import web
-import json
 
 logger = logging.getLogger("pc")
 logging.basicConfig(level=logging.INFO)
 
 pcs = set()
+
+relay = None
+webcam = None
+
+def create_local_track():
+    global relay, webcam
+
+    options = {"framerate": "30", "video_size": "640x480"}
+    if relay is None:
+        if platform.system() == "Darwin":
+            webcam = MediaPlayer(
+                "default:none", format="avfoundation", options=options
+            )
+        elif platform.system() == "Windows":
+            webcam = MediaPlayer(
+                "video=Integrated Camera", format="dshow", options=options
+            )
+        else:
+            webcam = MediaPlayer("/dev/video0", format="v4l2", options=options)
+        relay = MediaRelay()
+    return relay.subscribe(webcam.video)
+
+
+def force_codec(pc, sender, forced_codec):
+    kind = forced_codec.split("/")[0]
+    codecs = RTCRtpSender.getCapabilities(kind).codecs
+    transceiver = next(t for t in pc.getTransceivers() if t.sender == sender)
+    transceiver.setCodecPreferences(
+        [codec for codec in codecs if codec.mimeType == forced_codec]
+    )
 
 async def index(_):
     return web.FileResponse('static/index.html')
@@ -28,19 +62,14 @@ async def offer(request):
 
     log_info("Created for %s", request.remote)
 
-    # prepare local media
-    #player = MediaPlayer(os.path.join(ROOT, "demo-instruct.wav"))
-    #if args.record_to:
-    #    recorder = MediaRecorder(args.record_to)
-    #else:
-    #    recorder = MediaBlackhole()
 
     @pc.on("datachannel")
     def on_datachannel(channel):
         @channel.on("message")
         def on_message(message):
-            if isinstance(message, str) and message.startswith("ping"):
-                channel.send("pong" + message[4:])
+            if isinstance(message, str):
+                #log_info("datachannel: received %s", message)
+                pass
 
     @pc.on("connectionstatechange")
     async def on_connectionstatechange():
@@ -49,30 +78,14 @@ async def offer(request):
             await pc.close()
             pcs.discard(pc)
 
-    #@pc.on("track")
-    #def on_track(track):
-    #    log_info("Track %s received", track.kind)
+    video = create_local_track()
 
-    #    if track.kind == "audio":
-    #        pc.addTrack(player.audio)
-    #        recorder.addTrack(track)
-    #    elif track.kind == "video":
-    #        pc.addTrack(
-    #            VideoTransformTrack(
-    #                relay.subscribe(track), transform=params["video_transform"]
-    #            )
-    #        )
-    #        if args.record_to:
-    #            recorder.addTrack(relay.subscribe(track))
-
-    #    @track.on("ended")
-    #    async def on_ended():
-    #        log_info("Track %s ended", track.kind)
-    #        await recorder.stop()
+    if video:
+        video_sender = pc.addTrack(video)
+        force_codec(pc, video_sender, "video/h264")
 
     # handle offer
     await pc.setRemoteDescription(offer)
-    #await recorder.start()
 
     # send answer
     answer = await pc.createAnswer()
@@ -85,8 +98,16 @@ async def offer(request):
         ),
     )
 
+
+async def on_shutdown(_):
+    # close peer connections
+    coros = [pc.close() for pc in pcs]
+    await asyncio.gather(*coros)
+    pcs.clear()
+
 if __name__ == '__main__':
     app = web.Application()
+    app.on_shutdown.append(on_shutdown)
     app.router.add_static('/static/', path='static', name='static')
     app.router.add_get('/', index)
     app.router.add_post('/offer', offer)

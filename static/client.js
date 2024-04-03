@@ -4,6 +4,8 @@ var dataChannelLog = document.getElementById('data-channel'),
   iceGatheringLog = document.getElementById('ice-gathering-state'),
   signalingLog = document.getElementById('signaling-state');
 
+let gamepadInfo = document.getElementById("gamepad-info");
+let wheel, right_pedal, left_pedal;
 
 // peer connection
 var pc = null;
@@ -16,9 +18,10 @@ function createPeerConnection() {
     sdpSemantics: 'unified-plan'
   };
 
-  //if (document.getElementById('use-stun').checked) {
+  // Use this for local testing
+  //config.iceServers = [{ urls: ['stun:stun.l.google.com:19302'] }];
+
   config.iceServers = [{ urls: ['stun:rover:3478'] }];
-  //}
 
   pc = new RTCPeerConnection(config);
 
@@ -38,18 +41,18 @@ function createPeerConnection() {
   }, false);
   signalingLog.textContent = pc.signalingState;
 
-  // connect audio / video
-  //pc.addEventListener('track', (evt) => {
-  //    if (evt.track.kind == 'video')
-  //        document.getElementById('video').srcObject = evt.streams[0];
-  //    else
-  //        document.getElementById('audio').srcObject = evt.streams[0];
-  //});
+  // connect video
+  pc.addEventListener('track', (evt) => {
+    if (evt.track.kind == 'video') {
+      document.getElementById('video').srcObject = evt.streams[0];
+    }
+  });
 
   return pc;
 }
 
 function negotiate() {
+  pc.addTransceiver('video', { direction: 'recvonly' });
   return pc.createOffer().then((offer) => {
     return pc.setLocalDescription(offer);
   }).then(() => {
@@ -69,17 +72,6 @@ function negotiate() {
     });
   }).then(() => {
     var offer = pc.localDescription;
-    //var codec;
-
-    //codec = document.getElementById('audio-codec').value;
-    //if (codec !== 'default') {
-    //    offer.sdp = sdpFilterCodec('audio', codec, offer.sdp);
-    //}
-
-    //codec = document.getElementById('video-codec').value;
-    //if (codec !== 'default') {
-    //    offer.sdp = sdpFilterCodec('video', codec, offer.sdp);
-    //}
 
     document.getElementById('offer-sdp').textContent = offer.sdp;
     return fetch('/offer', {
@@ -108,20 +100,6 @@ function start() {
 
   pc = createPeerConnection();
 
-  var time_start = null;
-
-  const current_stamp = () => {
-    if (time_start === null) {
-      time_start = new Date().getTime();
-      return 0;
-    } else {
-      return new Date().getTime() - time_start;
-    }
-  };
-
-  //if (document.getElementById('use-datachannel').checked) {
-  //var parameters = JSON.parse(document.getElementById('datachannel-parameters').value);
-
   dc = pc.createDataChannel('chat');
   dc.addEventListener('close', () => {
     clearInterval(dcInterval);
@@ -130,74 +108,12 @@ function start() {
   dc.addEventListener('open', () => {
     dataChannelLog.textContent += '- open\n';
     dcInterval = setInterval(() => {
-      var message = 'ping ' + current_stamp();
-      dataChannelLog.textContent += '> ' + message + '\n';
+      var message = JSON.stringify({ "wheel": wheel, "left_pedal": left_pedal, "right_pedal": right_pedal });
       dc.send(message);
-    }, 1000);
+    }, 20);
   });
-  dc.addEventListener('message', (evt) => {
-    dataChannelLog.textContent += '< ' + evt.data + '\n';
 
-    if (evt.data.substring(0, 4) === 'pong') {
-      var elapsed_ms = current_stamp() - parseInt(evt.data.substring(5), 10);
-      dataChannelLog.textContent += ' RTT ' + elapsed_ms + ' ms\n';
-    }
-  });
-  //}
-
-  // Build media constraints.
-
-  //const constraints = {
-  //    audio: false,
-  //    video: false
-  //};
-
-  //if (document.getElementById('use-audio').checked) {
-  //    const audioConstraints = {};
-
-  //    const device = document.getElementById('audio-input').value;
-  //    if (device) {
-  //        audioConstraints.deviceId = { exact: device };
-  //    }
-
-  //    constraints.audio = Object.keys(audioConstraints).length ? audioConstraints : true;
-  //}
-
-  //if (document.getElementById('use-video').checked) {
-  //    const videoConstraints = {};
-
-  //    const device = document.getElementById('video-input').value;
-  //    if (device) {
-  //        videoConstraints.deviceId = { exact: device };
-  //    }
-
-  //    const resolution = document.getElementById('video-resolution').value;
-  //    if (resolution) {
-  //        const dimensions = resolution.split('x');
-  //        videoConstraints.width = parseInt(dimensions[0], 0);
-  //        videoConstraints.height = parseInt(dimensions[1], 0);
-  //    }
-
-  //    constraints.video = Object.keys(videoConstraints).length ? videoConstraints : true;
-  //}
-
-  //// Acquire media and start negociation.
-
-  //if (constraints.audio || constraints.video) {
-  //    if (constraints.video) {
-  //        document.getElementById('media').style.display = 'block';
-  //    }
-  //    navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
-  //        stream.getTracks().forEach((track) => {
-  //            pc.addTrack(track, stream);
-  //        });
-  //        return negotiate();
-  //    }, (err) => {
-  //        alert('Could not acquire media: ' + err);
-  //    });
-  //} else {
   negotiate();
-  //}
 
   document.getElementById('stop').style.display = 'inline-block';
 }
@@ -220,18 +136,11 @@ function stop() {
     });
   }
 
-  // close local audio / video
-  //pc.getSenders().forEach((sender) => {
-  //    sender.track.stop();
-  //});
-
   // close peer connection
   setTimeout(() => {
     pc.close();
   }, 500);
 }
-
-let gamepadInfo = document.getElementById("gamepad-info");
 
 // Check if Gamepad API is supported
 if ("getGamepads" in navigator) {
@@ -269,9 +178,9 @@ if ("getGamepads" in navigator) {
       // Display gamepad info
       gamepadInfo.innerHTML += "<div>Gamepad " + gamepad.index + ": " + gamepad.id + "</div>";
 
-      let wheel = gamepad.axes[0]; // From -1 to 1, 0 is neutral
-      let right_pedal = gamepad.axes[1]; // From -1 to 1, -1 is neutral
-      let left_pedal = gamepad.axes[2]; // From -1 to 1, -1 is neutral
+      wheel = gamepad.axes[0]; // From -1 to 1, 0 is neutral
+      right_pedal = gamepad.axes[1]; // From -1 to 1, -1 is neutral
+      left_pedal = gamepad.axes[2]; // From -1 to 1, -1 is neutral
 
       gamepadInfo.innerHTML += "<div>Wheel: " + wheel.toFixed(2) + "</div>";
       gamepadInfo.innerHTML += "<div>Right pedal: " + right_pedal.toFixed(2) + "</div>";
@@ -279,8 +188,8 @@ if ("getGamepads" in navigator) {
     }
   }
 
-  // Set up gamepad input polling
-  setInterval(handleGamepadInput, 20); // Poll every 20ms
+  // Set up gamepad input polling every 20 ms
+  setInterval(handleGamepadInput, 20);
 
 } else {
   // Gamepad API not supported
