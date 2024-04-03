@@ -3,10 +3,9 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY requirements.txt .
-
 RUN pip install -q -r requirements.txt
 
 COPY app.py .
 COPY static ./static/
 
-CMD ["python", "app.py"]
+CMD ["python", "app.py", "--cert-file=/certs/cert.crt", "--key-file=/certs/key.key"]

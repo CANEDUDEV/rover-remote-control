@@ -1,8 +1,10 @@
 import logging
+import ssl
 import uuid
 import json
 import platform
 import asyncio
+import argparse
 
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay
@@ -106,9 +108,24 @@ async def on_shutdown(_):
     pcs.clear()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Rover remote control demo")
+
+    parser.add_argument("--cert-file", help="SSL certificate file (for HTTPS)")
+    parser.add_argument("--key-file", help="SSL key file (for HTTPS)")
+
+    args = parser.parse_args()
+
+    if args.cert_file:
+        ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(args.cert_file, args.key_file)
+        port = 443
+    else:
+        ssl_context = None
+        port = 80
+
     app = web.Application()
     app.on_shutdown.append(on_shutdown)
     app.router.add_static('/static/', path='static', name='static')
     app.router.add_get('/', index)
     app.router.add_post('/offer', offer)
-    web.run_app(app)
+    web.run_app(app, port=port, ssl_context=ssl_context)

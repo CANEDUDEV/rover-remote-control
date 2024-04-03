@@ -7,5 +7,7 @@ services:
     build: .
     devices:
       - /dev/video0
+    volumes:
+      - ./certs:/certs
     image: rover-remote-control
     network_mode: host
