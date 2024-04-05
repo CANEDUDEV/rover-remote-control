@@ -12,4 +12,8 @@ services:
     volumes:
       - ./certs:/certs
     network_mode: host
+
+    # Required for CAN access
+    privileged: true
+
     restart: unless-stopped
