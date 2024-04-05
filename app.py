@@ -1,19 +1,18 @@
-import logging
-import subprocess
-import struct
-import ssl
-import uuid
-import json
-import platform
-import asyncio
 import argparse
+import asyncio
+import json
+import logging
+import platform
+import ssl
+import struct
+import subprocess
+import uuid
 
+import can
+from aiohttp import web
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay
 from aiortc.rtcrtpsender import RTCRtpSender
-from aiohttp import web
-
-import can
 
 logger = logging.getLogger("pc")
 logging.basicConfig(level=logging.INFO)
@@ -23,15 +22,14 @@ pcs = set()
 relay = None
 webcam = None
 
+
 def create_local_track():
     global relay, webcam
 
     options = {"framerate": "30", "video_size": "640x480"}
     if relay is None:
         if platform.system() == "Darwin":
-            webcam = MediaPlayer(
-                "default:none", format="avfoundation", options=options
-            )
+            webcam = MediaPlayer("default:none", format="avfoundation", options=options)
         elif platform.system() == "Windows":
             webcam = MediaPlayer(
                 "video=Integrated Camera", format="dshow", options=options
@@ -50,8 +48,9 @@ def force_codec(pc, sender, forced_codec):
         [codec for codec in codecs if codec.mimeType == forced_codec]
     )
 
+
 async def index(_):
-    return web.FileResponse('static/index.html')
+    return web.FileResponse("static/index.html")
 
 
 async def offer(request):
@@ -68,17 +67,21 @@ async def offer(request):
 
     log_info("Created for %s", request.remote)
 
-    subprocess.run(["ip", "link", "set", "can0", "up", "type", "can", "bitrate", "125000"])
+    subprocess.run(
+        ["ip", "link", "set", "can0", "up", "type", "can", "bitrate", "125000"]
+    )
 
     ch = can.Bus(interface="socketcan", channel="can0", bitrate=125000)
 
     # Set SBUS receiver to silent mode
-    ch.send(can.Message(
-        arbitration_id=0,
-        dlc=8,
-        data=[4, 0, 0, 0x1, 0, 0, 0, 0],
-        is_extended_id=False,
-    ))
+    ch.send(
+        can.Message(
+            arbitration_id=0,
+            dlc=8,
+            data=[4, 0, 0, 0x1, 0, 0, 0, 0],
+            is_extended_id=False,
+        )
+    )
 
     @pc.on("datachannel")
     def on_datachannel(channel):
@@ -97,12 +100,14 @@ async def offer(request):
         log_info("Connection state is %s", pc.connectionState)
         if pc.connectionState == "failed" or pc.connectionState == "closed":
             # Set SBUS receiver to comm mode
-            ch.send(can.Message(
-                arbitration_id=0,
-                dlc=8,
-                data=[4, 0, 0, 0x3, 0, 0, 0, 0],
-                is_extended_id=False,
-            ))
+            ch.send(
+                can.Message(
+                    arbitration_id=0,
+                    dlc=8,
+                    data=[4, 0, 0, 0x3, 0, 0, 0, 0],
+                    is_extended_id=False,
+                )
+            )
             ch.shutdown()
 
             subprocess.run(["ip", "link", "set", "can0", "down"])
@@ -130,24 +135,26 @@ async def offer(request):
         ),
     )
 
+
 def can_frames_from_message(message):
     cmd = json.loads(message)
     if "wheel" not in cmd or "right_pedal" not in cmd or "left_pedal" not in cmd:
         return []
 
-    wheel = cmd['wheel']
-    right_pedal = cmd['right_pedal']
-    left_pedal = cmd['left_pedal']
+    wheel = cmd["wheel"]
+    right_pedal = cmd["right_pedal"]
+    left_pedal = cmd["left_pedal"]
 
     return [
         create_steering_frame(wheel),
         create_throttle_frame(right_pedal, left_pedal),
     ]
 
+
 def create_steering_frame(wheel):
     id = 0x100
     dlc = 5
-    angle = float(wheel*45)
+    angle = float(wheel * 45)
     data = [1] + list(struct.pack("f", angle))
     return can.Message(
         arbitration_id=id,
@@ -155,6 +162,7 @@ def create_steering_frame(wheel):
         dlc=dlc,
         is_extended_id=False,
     )
+
 
 def create_throttle_frame(right_pedal, left_pedal):
     # Pedals come in at values between -1 and 1,
@@ -178,13 +186,15 @@ def create_throttle_frame(right_pedal, left_pedal):
         is_extended_id=False,
     )
 
+
 async def on_shutdown(_):
     # close peer connections
     coros = [pc.close() for pc in pcs]
     await asyncio.gather(*coros)
     pcs.clear()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rover remote control demo")
 
     parser.add_argument("--cert-file", help="SSL certificate file (for HTTPS)")
@@ -202,7 +212,7 @@ if __name__ == '__main__':
 
     app = web.Application()
     app.on_shutdown.append(on_shutdown)
-    app.router.add_static('/static/', path='static', name='static')
-    app.router.add_get('/', index)
-    app.router.add_post('/offer', offer)
+    app.router.add_static("/static/", path="static", name="static")
+    app.router.add_get("/", index)
+    app.router.add_post("/offer", offer)
     web.run_app(app, port=port, ssl_context=ssl_context)
