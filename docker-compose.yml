@@ -12,6 +12,10 @@ services:
     volumes:
       - ./certs:/certs
     network_mode: host
+    command:
+      - --cert-file=/certs/cert.crt
+      - --key-file=/certs/key.key
+      #- --no-control
 
     # Required for CAN access
     privileged: true

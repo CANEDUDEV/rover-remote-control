@@ -21,6 +21,7 @@ pcs = set()
 
 relay = None
 webcam = None
+control_enabled = True
 
 
 def create_local_track():
@@ -67,27 +68,30 @@ async def offer(request):
 
     log_info("Created for %s", request.remote)
 
-    subprocess.run(
-        ["ip", "link", "set", "can0", "up", "type", "can", "bitrate", "125000"]
-    )
-
-    ch = can.Bus(interface="socketcan", channel="can0", bitrate=125000)
-
-    # Set SBUS receiver to silent mode
-    ch.send(
-        can.Message(
-            arbitration_id=0,
-            dlc=8,
-            data=[4, 0, 0, 0x1, 0, 0, 0, 0],
-            is_extended_id=False,
+    if control_enabled:
+        subprocess.run(
+            ["ip", "link", "set", "can0", "up", "type", "can", "bitrate", "125000"]
         )
-    )
+
+        ch = can.Bus(interface="socketcan", channel="can0", bitrate=125000)
+
+        # Set SBUS receiver to silent mode
+        ch.send(
+            can.Message(
+                arbitration_id=0,
+                dlc=8,
+                data=[4, 0, 0, 0x1, 0, 0, 0, 0],
+                is_extended_id=False,
+            )
+        )
 
     @pc.on("datachannel")
     def on_datachannel(channel):
         @channel.on("message")
         def on_message(message):
             if message and isinstance(message, str):
+                if not control_enabled:
+                    return
                 frames = can_frames_from_message(message)
                 for frame in frames:
                     try:
@@ -99,18 +103,19 @@ async def offer(request):
     async def on_connectionstatechange():
         log_info("Connection state is %s", pc.connectionState)
         if pc.connectionState == "failed" or pc.connectionState == "closed":
-            # Set SBUS receiver to comm mode
-            ch.send(
-                can.Message(
-                    arbitration_id=0,
-                    dlc=8,
-                    data=[4, 0, 0, 0x3, 0, 0, 0, 0],
-                    is_extended_id=False,
+            if control_enabled:
+                # Set SBUS receiver to comm mode
+                ch.send(
+                    can.Message(
+                        arbitration_id=0,
+                        dlc=8,
+                        data=[4, 0, 0, 0x3, 0, 0, 0, 0],
+                        is_extended_id=False,
+                    )
                 )
-            )
-            ch.shutdown()
+                ch.shutdown()
 
-            subprocess.run(["ip", "link", "set", "can0", "down"])
+                subprocess.run(["ip", "link", "set", "can0", "down"])
 
             await pc.close()
             pcs.discard(pc)
@@ -199,6 +204,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--cert-file", help="SSL certificate file (for HTTPS)")
     parser.add_argument("--key-file", help="SSL key file (for HTTPS)")
+    parser.add_argument(
+        "--no-control", action="store_true", help="don't send control commands"
+    )
 
     args = parser.parse_args()
 
@@ -209,6 +217,9 @@ if __name__ == "__main__":
     else:
         ssl_context = None
         port = 80
+
+    if args.no_control:
+        control_enabled = False
 
     app = web.Application()
     app.on_shutdown.append(on_shutdown)

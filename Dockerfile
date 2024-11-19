@@ -13,4 +13,4 @@ RUN pip install -q -r requirements.txt
 COPY app.py .
 COPY static ./static/
 
-CMD ["python", "app.py", "--cert-file=/certs/cert.crt", "--key-file=/certs/key.key"]
+ENTRYPOINT ["python", "app.py"]
